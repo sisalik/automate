@@ -6,7 +6,6 @@ from PyQt4 import QtCore, QtGui
 
 from input_hook import Hook
 from command_handler import CommandHandler
-import commands
 import message
 
 

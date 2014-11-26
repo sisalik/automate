@@ -1,4 +1,3 @@
-import subprocess
 from ctypes import cdll
 
 import win32gui
