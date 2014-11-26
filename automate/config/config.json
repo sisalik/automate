@@ -1,0 +1,21 @@
+{
+    // USER INTERFACE
+    // Default size of command box (px)
+    "default_size": [700, 80],
+    // Row height in the autocomplete box (px)
+    "tip_row_height": 30,
+    // Maximum number of autocomplete suggestions shown
+    "tip_rows": 10,
+    // Default window transparency (0..1)
+    "default_alpha": 0.9,
+    // Theme .css file
+    "theme": "black and red.css",
+    // Duration of slide animation (ms)
+    "slide_duration": 400,
+    // Duration of fade animation (ms)
+    "fade_duration": 250,
+
+    // OTHER
+    // Do not import these modules from the commands folder
+    "ignore_modules": ["example_commands", "key_remap"]
+}

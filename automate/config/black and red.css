@@ -1,0 +1,53 @@
+/*Common to all widgets*/
+CommandWindow, QLineEdit#cmd_box, QLabel#tip_line,
+Message, QLabel#title, QLabel#message {
+    color: white;
+    background: black;
+    selection-background-color: red;
+    border: none;
+}
+
+/*Command entry box*/
+QLineEdit#cmd_box {
+    padding-left: 10px;
+    font: 40pt Trebuchet MS;
+}
+
+/*Autocomplete suggest box labels*/
+QLabel#tip_line {
+    padding-left: 5px;
+    font: 14pt Trebuchet MS;
+    selection-color: red;
+}
+
+/*Selected/highlighted autocomplete suggestions*/
+QLabel#tip_line:hover, QLabel#tip_line[selected="true"] {
+    background: #222;
+}
+
+/*Command help text (shown in the background of the command entry box)*/
+QLabel#help_text {
+    color: #222;
+    background: transparent;
+    padding-left: 5px;
+    font: 40pt Trebuchet MS;
+}
+
+
+/*All widgets in the message box*/
+Message, QLabel#title, QLabel#message {
+    margin: 10px;
+    max-width: 800px;
+}
+
+/*Message title label*/
+QLabel#title {
+    font: 40pt Trebuchet MS;
+    margin-bottom: 0px;
+}
+
+/*Message text label*/
+QLabel#message {
+    color: #aaa;
+    font: 20pt Trebuchet MS;
+}
