@@ -14,9 +14,17 @@ Dependencies
 
 Getting started
 ========
-Install the dependencies and run automate.pyw. Hold down the caps lock key and start typing a command. Release caps lock to execute.
+Install the dependencies and run automate.pyw. Hold down the caps lock key and start typing a command. Release caps lock to execute. Use the `Exit` command or right click on the system tray icon to stop the program.
 
 Some commands, such as `Switch to...` or `Google...` expect parameters (window title, search string etc.). Press the tab key when these commands are selected to enter the command's submenu.
+
+By default, all Start menu shortcuts and Control Panel items are available as commands. Try out some of these: `Notepad`, `Paint`, `Control Panel`, `Programs and Features`.
+
+Some more built-in commands include: `Google...`, `Switch to...`, `Close...`, `Screen off`, `Sleep`, `Hibernate`.
+
+You can also use automate as a quick file explorer. When you start typing a directory name, such as `C:\`, automate will list the contents as autocomplete suggestions. Press tab to trigger autocompletion and escape to move back to the parent directory.
+
+When automate doesn't recognise a command, it will try to execute it using the same mechanism as the Run dialog does in Windows. Try: `msconfig`, `regedit`, `www.google.com`.
 
 Customization
 ========
