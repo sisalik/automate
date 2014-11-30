@@ -1,10 +1,7 @@
-from PyQt4 import QtCore
-
 from command_handler import CommandHandler
 import g_suggest
 
 g_suggest.tld = "co.uk"
-timer = QtCore.QTimer()
 
 
 @classmethod
