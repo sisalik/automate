@@ -1,5 +1,5 @@
 """
-Keyboard hook part adapted from http://stackoverflow.com/a/16430918
+Keyboard hook part adapted from post by user BoppreH at http://stackoverflow.com/a/16430918
 """
 
 from ctypes import windll, wintypes, CFUNCTYPE, POINTER, c_int, c_short, c_uint8, c_void_p, byref
@@ -89,7 +89,7 @@ class Hook(object):
     def register(cls, combo_str, callback=None, args=None, up_down='down'):
         """
         Decorator for registering hotkeys.
-        Inspired by http://project-2501.net/index.php/2014/06/global-hot-keys-in-python-for-windows/
+        Inspired by post by Matthew at http://project-2501.net/index.php/2014/06/global-hot-keys-in-python-for-windows/
         """
         # Called as a decorator?
         if callback is None:
@@ -236,6 +236,14 @@ def send_combo(combo_str, repeat=1):
             win32api.keybd_event(keycodes[key_str], 0, 0, 0)
         for key_str in key_strings[::-1]:  # Reversed list
             win32api.keybd_event(keycodes[key_str], 0, win32con.KEYEVENTF_KEYUP, 0)
+
+
+def send_string(string):
+    for c in string:
+        if c.isupper():
+            send_combo("LSHIFT + " + c)
+        else:
+            send_combo(c.upper())
 
 
 if __name__ == '__main__':

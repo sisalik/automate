@@ -3,6 +3,7 @@ import ctypes
 import thread
 import os
 import glob
+import re
 
 import win32com.client
 from pywintypes import com_error
@@ -37,7 +38,7 @@ class CommandHandler(object):
 
     @classmethod
     def load_commands(cls, ignore):
-        """Import all .py files in a folder. Based on http://stackoverflow.com/a/1057534"""
+        """Import all .py files in a folder. Based on a solution by Anurag Uniyal at http://stackoverflow.com/a/1057534"""
         modules = glob.glob(os.path.dirname(__file__)+"/commands/*.py")
         for f in modules:
             module_file = os.path.basename(f)[:-3]
@@ -57,6 +58,14 @@ class CommandHandler(object):
         else:
             command = dict(alias=alias, callback=callback, args=args, subcmds=subcmds)
             cls.command_list.append(command)
+
+    @classmethod
+    def remove(cls, alias):
+        for command in cls.command_list:
+            if command['alias'] == alias:
+                cls.command_list.remove(command)
+                return True  # Success
+        return False  # Couldn't find the command
 
     @classmethod
     def run(cls, text):
@@ -84,7 +93,13 @@ class CommandHandler(object):
         try:
             shell.Run('"' + text.decode("utf-8").encode("cp1252") + '"')
         except com_error:
-            message("Cannot execute: [i]%s[/i]" % text.decode("utf-8"), "Invalid command")
+            if re.search(r"\.\w+", text) is not None:  # Might be a URL. Append 'http://' and try again.
+                try:
+                    shell.Run('"http://' + text.decode("utf-8").encode("cp1252") + '"')
+                except com_error:
+                    message("Cannot execute: [i]%s[/i]" % text.decode("utf-8"), "Invalid command")
+            else:
+                message("Cannot execute: [i]%s[/i]" % text.decode("utf-8"), "Invalid command")
             return False
         else:
             return True
@@ -107,7 +122,7 @@ class CommandHandler(object):
         else:
             for command in cls.command_list:
                 if command['alias'] == cmd and command['subcmds']:
-                    cmd_list = command['callback'](*command['args'])
+                    cmd_list = command['callback']()
                     cls.active_command = command['alias']
                     break
 

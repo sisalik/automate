@@ -1,5 +1,5 @@
 """
-Simplified from https://gist.github.com/eristoddle/3750993
+Simplified from a gist by Stephan Miller at https://gist.github.com/eristoddle/3750993
 """
 
 from urllib import quote

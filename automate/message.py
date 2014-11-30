@@ -26,7 +26,7 @@ class Message(QtGui.QWidget):
 
     main_gui = None
 
-    def __init__(self, message, title="", timeout=2000):
+    def __init__(self, message, title="", timeout=4000):
         flags = QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint
         super(Message, self).__init__(None, flags)
 

@@ -1,20 +1,23 @@
 import time
-import re
 import json
+import os
+import sys
 
 from PyQt4 import QtCore, QtGui
 
-from input_hook import Hook
+from input_hook import Hook, send_combo
 from command_handler import CommandHandler
 import message
+from tip_box import TipBox
 
 
 class CommandWindow(QtGui.QWidget):
+    """Main command window class. Contains a QLineEdit for command entry and an autocomplete suggestion list.
+    Also serves as the main widget for the QApplication.
+    """
 
-    show_signal = QtCore.pyqtSignal()
-    hide_signal = QtCore.pyqtSignal()
-    fade_signal = QtCore.pyqtSignal()
-    message_signal = QtCore.pyqtSignal(str, str, int)
+    message_signal = QtCore.pyqtSignal(str, str, int)  # Signal to show message boxes
+    call_signal = QtCore.pyqtSignal(object, object)  # Signal to call functions from the main GUI thread
 
     def __init__(self, parent=None):
         flags = QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint
@@ -39,6 +42,24 @@ class CommandWindow(QtGui.QWidget):
         with open("config/" + self.theme) as css_file:
             self.setStyleSheet(css_file.read())
 
+        # Load shortcuts
+        with open("config/shortcuts.json") as shortcuts_file:
+            try:
+                shortcuts_dict = json.load(shortcuts_file, "utf-8")
+            except ValueError:  # No shortcuts saved in the file
+                pass
+            else:
+                for k, v in shortcuts_dict.items():
+                    CommandHandler.register(k.encode("utf-8"), CommandHandler.run, [v.encode("utf-8")])
+
+        # Set up a timer to watch the files for changes, restarting the script if detected
+        # Solution idea from Petr Zemek (http://blog.petrzemek.net/2014/03/23/restarting-a-python-script-within-itself/)
+        watched_files = [__file__, "config/config.json", "config/" + self.theme]
+        self.watched_files_mtimes = [(f, os.path.getmtime(f)) for f in watched_files]
+        self.watch_timer = QtCore.QTimer()
+        self.watch_timer.timeout.connect(self.check_files)
+        self.watch_timer.start(1000)  # Check every second
+
     def init_window(self):
         # Set up the window
         self.resize(*self.default_size)
@@ -51,12 +72,10 @@ class CommandWindow(QtGui.QWidget):
         message.Message.stylesheet = self.styleSheet()
 
         # Connect signals to slots
-        self.show_signal.connect(self.on_show)
-        self.hide_signal.connect(self.on_hide)
-        self.fade_signal.connect(self.on_fade)
         self.message_signal.connect(self.on_message)
+        self.call_signal.connect(self.on_call)
 
-        # Initialise some values
+        # Initialise some attributes
         self.history = []  # Command history
         self.history_sel = 0  # History selection index
         self.last_shown = 0  # Time when the command box was last shown (s) -- for detecting double taps
@@ -115,6 +134,29 @@ class CommandWindow(QtGui.QWidget):
         frame_geom.moveCenter(center_point)
         self.move(frame_geom.topLeft())
 
+    def showEvent(self, event):
+        if time.time() - self.last_shown < 0.25:  # Double tapped caps lock
+            self.on_double_tap()
+        self.last_shown = time.time()
+
+        self.setWindowOpacity(self.default_alpha)
+        self.show()
+        self.center()
+        # For a bizarre reason, it is necessary to send an Alt key press before activating the window -- otherwise it may not
+        # always work! Read: http://www.shloemi.com/2012/09/solved-setforegroundwindow-win32-api-not-always-works/
+        send_combo("MENU")
+        self.activateWindow()
+        event.accept()
+
+    def hideEvent(self, event):
+        self.on_fade_finished()
+        self.after_hide()
+        self.after_hide = lambda: None
+        event.accept()
+
+    def after_hide(self):
+        pass
+
     def slide(self, height):
         if self.default_size[1] + height < self.height():
             animation = self.contract_anim
@@ -156,6 +198,16 @@ class CommandWindow(QtGui.QWidget):
         else:
             return self.get_text()
 
+    def run_command(self):
+        command = self.get_command()
+        if command:
+            subcommand_mode = CommandHandler.active_command is not None
+            if CommandHandler.run(command) and not subcommand_mode:
+                self.history.insert(0, command)
+            self.fade()
+        else:
+            self.hide()
+
     def on_change(self):
         cmd_text = self.get_text()
         if cmd_text:
@@ -167,25 +219,6 @@ class CommandWindow(QtGui.QWidget):
         if CommandHandler.ac_delay > 0:  # If the delay is longer than 0 ms, clear the suggestions list before repopulating
             self.ac_thread.suggestions.emit([])
 
-    def on_show(self):
-        if time.time() - self.last_shown < 0.25:  # Double tap caps lock to enter Google search
-            CommandHandler.get_subcmds("Google...")
-            self.help_text.setText(CommandHandler.active_command)
-        self.last_shown = time.time()
-
-        self.setWindowOpacity(self.default_alpha)
-        self.show()
-        self.center()
-        for i in xrange(5):  # Seems to be necessary for some reason
-            self.activateWindow()
-            time.sleep(0.02)
-
-    def on_hide(self):
-        self.on_fade_finished()
-
-    def on_fade(self):
-        self.fade()
-
     def on_suggestions(self, suggestions):
         pattern = self.get_text()
         if '\\' in pattern:  # Folder navigation mode
@@ -194,6 +227,11 @@ class CommandWindow(QtGui.QWidget):
 
     def on_message(self, text, title, timeout):
         self.msg = message.Message(text, title, timeout)
+
+    def check_files(self):
+        for f, mtime in self.watched_files_mtimes:
+            if os.path.getmtime(f) > mtime:
+                restart()
 
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Up:
@@ -204,6 +242,10 @@ class CommandWindow(QtGui.QWidget):
             self.on_tab()
         elif e.key() == QtCore.Qt.Key_Escape:
             self.on_esc()
+
+    def on_double_tap(self):
+        CommandHandler.get_subcmds("Google...")
+        self.help_text.setText(CommandHandler.active_command)
 
     def on_up(self):
         if self.tip_box.rows > 1:
@@ -255,132 +297,134 @@ class CommandWindow(QtGui.QWidget):
         self.on_change()
 
     def on_about(self):
-        QtGui.QMessageBox.about(self, "About automate 0.1.0", "This is one of the best programs available.")
+        QtGui.QMessageBox.about(self, "About automate 0.1.0", "automate is a Windows application launcher written in Python. " +
+            "Its main purpose is to make it quick and easy to launch anything -- from Start menu items " +
+            "to websites and scripts. It is easily extendable and customizable.")
 
+    def call(self, function, args=[]):
+        """Call any function from the main GUI thread. This is sometimes needed because Qt doesn't allow GUI-related functions
+        to be called from any other thread.
 
-class TipBox(object):
+        Args:
+            function: Function to be called.
+            args: List or tuple of arguments to pass to the function.
+        """
+        self.call_signal.emit(function, args)  # Emit a signal to the main thread
 
-    def __init__(self, parent, (x0, y0), (w, h), max_rows):
-        self.parent = parent
-        self.max_rows = max_rows
-        self.w = w
-        self.h = h
-
-        self.rows = 0
-        self.selected = 0
-
-        # Get the highlight colour from the master stylesheet
-        self.highlight_colour = re.search(r"QLabel#tip_line[\S\s]*?selection-color:\s*(.*?)\s*;",
-                                          self.parent.styleSheet()).group(1)
-
-        # Create label widgets
-        self.lines = []
-        for i in xrange(self.max_rows):
-            line = QtGui.QLabel(parent=self.parent)
-
-            x = x0
-            y = y0 + i * self.h
-            line.setGeometry(QtCore.QRect(x, y, self.w, self.h))
-            line.setObjectName("tip_line")
-            line.mousePressEvent = lambda e, i=i: self.on_click(e, i)
-            self.lines.append(line)
-
-    def highlight(self, text, pattern):
-        text = text.decode("utf-8")
-        pattern = pattern.decode("utf-8")
-        start = 0
-        for c in pattern.lower():
-            pos = text.lower().find(c, start)
-            if pos != -1:
-                highlighted = r'<span style="color:%s;">%s</span>' % (self.highlight_colour, text[pos])
-                start = pos + len(highlighted)
-                text = text[:pos] + highlighted + text[pos + 1:]
-        return "<html><head/><body><p>%s</p></body></html>" % text
-        # return r"""
-        #     <html>
-        #         <head/>
-        #         <body>
-        #             <table valign="middle">
-        #                 <tr>
-        #                     <td width=25><img src="C:\Windows\winsxs\amd64_microsoft-windows-dxp-deviceexperience_31bf3856ad364e35_6.1.7600.16385_none_a31a1d6b13784548\settings.ico" height="20"/></td>
-        #                     <td>%s</td>
-        #                 </tr>
-        #             </table>
-        #         </body>
-        #     </html>""" % text
-
-    def set_text(self, content, pattern=None):
-        content = list(content)  # In case it's a generator
-        self.content = content
-
-        for line, text in zip(self.lines, content):
-            if pattern:
-                line.setText(self.highlight(text, pattern))
-            else:
-                line.setText(text)
-
-        self.selected = 0
-        self.select(self.selected)
-        self.rows = min(len(self.content), self.max_rows)
-
-        self.parent.slide(self.h * self.rows)
-
-    def get_selection(self):
-        temp = QtGui.QTextDocument()
-        temp.setHtml(self.lines[self.selected].text())
-        text = temp.toPlainText()  # No icons
-        # text = temp.toPlainText()[3:-1]
-        return unicode(text).encode("utf-8")
-
-    def select(self, index):
-        for i, line in enumerate(self.lines):
-            if i == index:
-                line.setProperty("selected", True)
-            else:
-                line.setProperty("selected", False)
-            line.setStyleSheet("")  # Update stylesheet
-
-    def down(self,):
-        if 0 <= self.selected < self.rows - 1:
-            self.selected += 1
-        else:
-            self.selected = 0
-        self.select(self.selected)
-
-    def up(self):
-        if 0 < self.selected < self.rows:
-            self.selected -= 1
-        else:
-            self.selected = self.rows - 1
-        self.select(self.selected)
-
-    def on_click(self, event, index):
-        self.selected = index
-        caps_up()
+    def on_call(self, function, args):
+        function(*args)
 
 
 @CommandHandler.register("Exit")
 def exit():
+    cmd_win.tray_icon.hide()
+    app.exit()
     Hook.stop()
-    app.quit()
+
+
+@CommandHandler.register("Reload")
+def restart():
+    exit()
+    python = sys.executable
+    os.execl(python, python, *sys.argv + ["no-splash"])
+
+
+def load_shortcuts():
+    """Load the shortcuts dictionary from the JSON file."""
+    with open("config/shortcuts.json") as shortcuts_file:
+        try:
+            return json.load(shortcuts_file, "utf-8")  # Load existing shortcut dictionary
+        except ValueError:  # No shortcuts saved in the file
+            return {}
+
+
+def save_shortcuts(dictionary):
+    """Save a dictionary into the shortcuts JSON file."""
+    with open("config/shortcuts.json", "w") as shortcuts_file:
+        shortcuts_file.write(json.dumps(dictionary, sort_keys=True, indent=4, ensure_ascii=False).encode("utf-8"))
+
+
+@CommandHandler.register("Create shortcut...", args=[""], subcmds=True)
+def create_shortcut(name=None):
+    if name is None:  # Register subcommands
+        return []
+    elif name == "":
+        message.message("Press tab to enter a name for the shortcut first", "Error")
+    else:
+        # Wait for the command window to fade out
+        cmd_win.after_hide = lambda name=name: get_shortcut(name)
+
+
+def get_shortcut(name):
+    clipboard = QtGui.QApplication.clipboard()
+    old_formats = list(clipboard.mimeData().formats())
+    old_clipboard = QtCore.QMimeData()
+    for f in old_formats:
+        data = clipboard.mimeData().data(f)
+        old_clipboard.setData(f, data)
+
+    clipboard.dataChanged.connect(lambda n=name, old_cb=old_clipboard: register_shortcut(n, old_cb))
+    send_combo("LCONTROL + C")  # Send the ctrl+v key combination to copy active selection (file or text)
+
+
+def register_shortcut(name, old_clipboard):
+    clipboard = QtGui.QApplication.clipboard()
+    clipboard.dataChanged.disconnect()
+
+    urls = clipboard.mimeData().urls()
+    text = clipboard.text()
+    if list(old_clipboard.formats()):  # Check if the old clipboard MIME object contains any data
+        cmd_win.call(clipboard.setMimeData, [old_clipboard])
+
+    if text:  # The clipboard contains text
+        shortcut = unicode(text)
+    elif urls:  # The clipboard contains a file
+        shortcut = unicode(urls[0].toString())[8:].replace("/", "\\")
+    else:
+        message.message("Unable to register the selection as a shortcut", "Error")
+        return
+
+    shortcuts_dict = load_shortcuts()  # Load shortcuts from the config file
+    if name.decode("utf-8") not in shortcuts_dict:
+        keyword = "registered"
+    else:
+        keyword = "updated"
+        CommandHandler.remove(name)  # Delete the existing command
+    CommandHandler.register(name, CommandHandler.run, [shortcut.encode("utf-8")])  # Register the new command
+    shortcuts_dict.update({name.decode("utf-8"): shortcut})  # Update with new shortcut
+    save_shortcuts(shortcuts_dict)  # Write back to the file
+    message.message("Shortcut %s: [i]%s[/i]\nTarget: [i]%s[/i]" % (keyword, name.decode("utf-8"), shortcut), "Success")
+
+
+@CommandHandler.register("Remove shortcut...", args=[""], subcmds=True)
+def remove_shortcut(name=None):
+    if name is None:  # Register subcommands
+        shortcuts_dict = load_shortcuts()
+        return [key.encode("utf-8") for key in shortcuts_dict]
+    elif name == "":
+        message.message("Press tab to select a shortcut to remove", "Error")
+    else:
+        if CommandHandler.remove(name):
+            shortcuts_dict = load_shortcuts()  # Load shortcuts from the config file
+            shortcuts_dict.pop(name.decode("utf-8"))  # Remove shortcut
+            save_shortcuts(shortcuts_dict)  # Write back to the file
+            message.message("Shortcut removed: [i]%s[/i]" % name.decode("utf-8"), "Success")
+        else:
+            message.message("Unable to remove shortcut: [i]%s[/i]" % name.decode("utf-8"), "Error")
+
+
+def test():
+    print "Success"
 
 
 @Hook.register("CAPITAL", up_down="up")
 def caps_up():
-    command = cmd_win.get_command()
-
-    if command:
-        subcommand_mode = CommandHandler.active_command is not None
-        if CommandHandler.run(command) and not subcommand_mode:
-            cmd_win.history.insert(0, command)
-        cmd_win.fade_signal.emit()
-    else:
-        cmd_win.hide_signal.emit()
+    cmd_win.call(cmd_win.run_command)
 
 
 @Hook.register("CAPITAL", up_down="down")
 def caps_down():
-    cmd_win.show_signal.emit()
+    cmd_win.call(cmd_win.show)
 
 
 if __name__ == '__main__':
@@ -388,11 +432,13 @@ if __name__ == '__main__':
     app = QtGui.QApplication([])
     app.setQuitOnLastWindowClosed(False)
     cmd_win = CommandWindow()
+    CommandHandler.main_gui = cmd_win  # Make the main GUI available to other modules through the command handler
     CommandHandler.load_commands(ignore=cmd_win.ignore_modules)
     # print "Loaded commands:\n", CommandHandler.print_commands(), "\n"
     # print "Registered key combinations:\n", Hook.print_combos(), "\n"
     Hook.start()
-    msg = "Started in %d ms\nCommands: %d\nHotkeys: %d" % (1000 * (time.time() - t0), len(CommandHandler.command_list),
-                                                           len(Hook.combos))
-    message.message(msg, "automate 0.1.0")
+    if "no-splash" not in sys.argv:
+        msg = "Started in %d ms\nCommands: %d\nHotkeys: %d" % (1000 * (time.time() - t0), len(CommandHandler.command_list),
+                                                               len(Hook.combos))
+        message.message(msg, "automate 0.1.0", timeout=2000)
     app.exec_()
