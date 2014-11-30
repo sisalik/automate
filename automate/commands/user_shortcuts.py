@@ -34,6 +34,8 @@ def create_shortcut(name=None):
 
 
 def get_shortcut(name):
+    """Copy the selected file/text into the clipboard."""
+    # Store the current clipboard contents to be restored later
     clipboard = QtGui.QApplication.clipboard()
     old_formats = list(clipboard.mimeData().formats())
     old_clipboard = QtCore.QMimeData()
@@ -41,18 +43,22 @@ def get_shortcut(name):
         data = clipboard.mimeData().data(f)
         old_clipboard.setData(f, data)
 
+    # register_shortcut function to be called when a clipboard change has been detected
     clipboard.dataChanged.connect(lambda n=name, old_cb=old_clipboard: register_shortcut(n, old_cb))
+    clipboard_timer.start()
     send_combo("LCONTROL + C")  # Send the ctrl+v key combination to copy active selection (file or text)
 
 
 def register_shortcut(name, old_clipboard):
+    """Retrieve the text/filename from the clipboard and register it as a new command."""
     clipboard = QtGui.QApplication.clipboard()
     clipboard.dataChanged.disconnect()
+    clipboard_timer.stop()
 
     urls = clipboard.mimeData().urls()
     text = clipboard.text()
     if list(old_clipboard.formats()):  # Check if the old clipboard MIME object contains any data
-        CommandHandler.main_gui.call(clipboard.setMimeData, [old_clipboard])
+        CommandHandler.main_gui.call(clipboard.setMimeData, [old_clipboard])  # Restore the old clipboard contents
 
     if text:  # The clipboard contains text
         shortcut = unicode(text)
@@ -74,6 +80,12 @@ def register_shortcut(name, old_clipboard):
     message("Shortcut %s: [i]%s[/i]\nTarget: [i]%s[/i]" % (keyword, name.decode("utf-8"), shortcut), "Success")
 
 
+def no_data_copied():
+    clipboard_timer.stop()
+    QtGui.QApplication.clipboard().dataChanged.disconnect()
+    message("Unable to retrieve clipboard data. Select a file or some text and try again.", "Error")
+
+
 @CommandHandler.register("Remove shortcut...", args=[""], subcmds=True)
 def remove_shortcut(name=None):
     if name is None:  # Register subcommands
@@ -89,3 +101,8 @@ def remove_shortcut(name=None):
             message("Shortcut removed: [i]%s[/i]" % name.decode("utf-8"), "Success")
         else:
             message("Unable to remove shortcut: [i]%s[/i]" % name.decode("utf-8"), "Error")
+
+
+clipboard_timer = QtCore.QTimer()
+clipboard_timer.timeout.connect(no_data_copied)
+clipboard_timer.setInterval(2000)
