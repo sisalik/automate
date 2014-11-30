@@ -1,4 +1,4 @@
-*This readme is incomplete. More information to be added soon.*
+*This is beta software. You will most likely see some bugs.*
 
 automate
 ========
@@ -12,17 +12,27 @@ Dependencies
 - PyQt4
 - Python for Windows Extensions
 
-Getting started
+Usage
 ========
-Install the dependencies and run automate.pyw. Hold down the caps lock key and start typing a command. Release caps lock to execute. Use the `Exit` command or right click on the system tray icon to stop the program.
+Install the dependencies and run automate.pyw. Hold down the caps lock key and start typing a command -- try out some of the ones mentioned below. Release caps lock to execute. Use the `Exit` command or right click on the system tray icon to stop the program.
 
+Automatic shortcut discovery
+--------
 By default, all Start menu shortcuts and Control Panel items are available as commands. Try out some of these: `Notepad`, `Paint`, `Control Panel`, `Programs and Features`.
 
+User shortcuts
+--------
+You can also add your own commands. Highlight a URL, a file or a folder and use the command `Create shortcut...`. Type a name for your shortcut and automate will retrieve the location of your selection and add it as a new command. To remove a shortcut, use `Remove shortcut...`.
+
+More commands
+--------
 Some more built-in commands include: `Google...`, `Switch to...`, `Close...`, `Screen off`, `Sleep`, `Hibernate`. Some of these, such as `Switch to...` or `Google...` expect arguments (window title, search string etc.). Press the tab key when these commands are selected to enter the command's submenu.
 
-You can also use automate as a quick file explorer. When you start typing a directory name, such as `C:\`, automate will list the contents as autocomplete suggestions. Press tab to trigger autocompletion and escape to move back to the parent directory.
-
 When automate doesn't recognise a command, it will try to execute it using the same mechanism as the Run dialog in Windows. Try: `msconfig`, `regedit`, `www.google.com`.
+
+File system navigation
+--------
+You can also use automate as a quick file explorer. When you start typing a directory name, such as `C:\`, automate will list the contents as autocomplete suggestions. Press tab to trigger autocompletion and escape to move back to the parent directory.
 
 Customization
 ========
