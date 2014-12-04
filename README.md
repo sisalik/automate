@@ -1,4 +1,4 @@
-*This is beta software. You will most likely see some bugs. Please use the issue tracker to report them, along with any feature suggestions! :)*
+*This is alpha software. You will most likely see some bugs. Please use the issue tracker to report them, along with any feature suggestions! :)*
 
 automate
 ========
