@@ -4,11 +4,21 @@ import os
 import sys
 
 from PyQt4 import QtCore, QtGui
+import win32gui
+import win32process
+import win32api
 
-from input_hook import Hook, send_combo
+from input_hook import Hook
 from command_handler import CommandHandler
 import message
 from tip_box import TipBox
+from single_instance import SingleInstance
+
+app_instance = SingleInstance()
+if app_instance.alerady_running():
+    app = QtGui.QApplication([])
+    QtGui.QMessageBox.critical(QtGui.QWidget(), "Error", "Another instance of this program is already running.")
+    sys.exit(0)
 
 
 class CommandWindow(QtGui.QWidget):
@@ -135,6 +145,7 @@ class CommandWindow(QtGui.QWidget):
         self.move(frame_geom.topLeft())
 
     def showEvent(self, event):
+        event.accept()
         if time.time() - self.last_shown < 0.25:  # Double tapped caps lock
             self.on_double_tap()
         self.last_shown = time.time()
@@ -142,17 +153,21 @@ class CommandWindow(QtGui.QWidget):
         self.setWindowOpacity(self.default_alpha)
         self.show()
         self.center()
-        # For a bizarre reason, it is necessary to send an Alt key press before activating the window -- otherwise it may not
-        # always work! Read: http://www.shloemi.com/2012/09/solved-setforegroundwindow-win32-api-not-always-works/
-        send_combo("MENU")
-        self.activateWindow()
-        event.accept()
+        # Activate the window. This is non-trivial, since on Windows 7, applications are not allowed to steal focus by default.
+        # Solution based on a question by Joey Eremondi (jmite) on http://stackoverflow.com/q/6312627
+        fgwin = win32gui.GetForegroundWindow()
+        fg = win32process.GetWindowThreadProcessId(fgwin)[0]
+        current = win32api.GetCurrentThreadId()
+        win32process.AttachThreadInput(fg, current, True)
+        hwnd = int(self.winId())
+        win32gui.SetForegroundWindow(hwnd)
+        win32process.AttachThreadInput(fg, win32api.GetCurrentThreadId(), False)
 
     def hideEvent(self, event):
+        event.accept()
         self.on_fade_finished()
         self.after_hide()
         self.after_hide = lambda: None
-        event.accept()
 
     def after_hide(self):
         pass
@@ -326,7 +341,7 @@ def exit():
 def restart():
     exit()
     python = sys.executable
-    os.execl(python, python, *sys.argv + ["no-splash"])
+    os.execl(python, python, *sys.argv + ["reload"])
 
 
 @Hook.register("CAPITAL", up_down="up")
@@ -349,8 +364,10 @@ if __name__ == '__main__':
     # print "Loaded commands:\n", CommandHandler.print_commands(), "\n"
     # print "Registered key combinations:\n", Hook.print_combos(), "\n"
     Hook.start()
-    if "no-splash" not in sys.argv:
+    if "reload" in sys.argv:
+        msg = "Configuration reloaded"
+    else:
         msg = "Started in %d ms\nCommands: %d\nHotkeys: %d" % (1000 * (time.time() - t0), len(CommandHandler.command_list),
                                                                len(Hook.combos))
-        message.message(msg, "automate 0.1.0", timeout=2000)
+    message.message(msg, "automate 0.1.0", timeout=2000)
     app.exec_()
