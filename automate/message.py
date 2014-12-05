@@ -91,36 +91,72 @@ class Message(QtGui.QWidget):
             app.quit()
 
     def parse_bbcode(self, text):
-        paragraphs = []
-        for p in text.split('\n'):
-            while '[' in p:
-                # Bold, italic, underline, strikethrough
-                p = re.sub(r"\[([bius])\](.*?)\[\/\1\]", r"<\1>\2</\1>", p)
-                # Size
-                p = re.sub(r'\[style size="(.*?)"\](.*?)\[\/style\]', r'<span style="font-size:\1">\2</span>', p)
-                # Colour
-                p = re.sub(r'\[style color="(.*?)"\](.*?)\[\/style\]', r'<span style="color:\1">\2</span>', p)
-                # Hyperlinks
-                p = re.sub(r"\[url\](.*?)\[\/url\]", r'<a href="\1">\1</a>', p)
-                p = re.sub(r"\[url=(.*?)\](.*?)\[\/url\]", r'<a href="\1">\2</a>', p)
-                # Images
-                p = re.sub(r"\[img\](.*?)\[\/img\]", r'<img src="\1" />', p)
-            paragraphs.append("<p>%s</p>" % p)
-        return "<html><head/><body>%s</body></html>" % ''.join(paragraphs)
+        text = ''.join("<p>%s</p>" % p for p in text.split('\n'))
+        subs = 1
+        while subs:
+            subs = 0
+            # Bold, italic, underline, strikethrough
+            text, n = re.subn(r"\[([bius])\](.*?)\[\/\1\]", r"<\1>\2</\1>", text)
+            subs += n
+            # Size
+            text, n = re.subn(r'\[style size="(.*?)"\](.*?)\[\/style\]', r'<span style="font-size:\1">\2</span>', text)
+            subs += n
+            # Colour
+            text, n = re.subn(r'\[style color="(.*?)"\](.*?)\[\/style\]', r'<span style="color:\1">\2</span>', text)
+            subs += n
+            # Hyperlinks
+            text, n = re.subn(r"\[url\](.*?)\[\/url\]", r'<a href="\1">\1</a>', text)
+            subs += n
+            text, n = re.subn(r"\[url=(.*?)\](.*?)\[\/url\]", r'<a href="\1">\2</a>', text)
+            subs += n
+            # Images
+            text, n = re.subn(r"\[img\](.*?)\[\/img\]", r'<img src="\1" />', text)
+            subs += n
+        return "<html><head/><body>%s</body></html>" % text
 
 
 def message(message, title="", timeout=2000):
-    """Doesn't work within this script"""
+    """Sends a signal to the main GUI to create a Message widget. This is necessary while the program is running, because
+    in PyQt4, most operations need to be done in the main thread."""
     Message.main_gui.message_signal.emit(message, title, timeout)
 
 if __name__ == "__main__":
     app = QtGui.QApplication([])
-    # msg = Message("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.", "Message from the program")
+    Message.default_alpha = 0.9  # Default window transparency (0..1)
+    Message.fade_duration = 250  # Fade animation duration (ms)
+    Message.stylesheet = """
+                         Message, QLabel#title, QLabel#message {
+                             color: white;
+                             background: black;
+                             selection-background-color: red;
+                             border: none;
+                             margin: 10px;
+                             max-width: 800px;
+                         }
+
+                         QLabel#title {
+                             font: 40pt Trebuchet MS;
+                             margin-bottom: 0px;
+                         }
+
+                         QLabel#message {
+                             color: #aaa;
+                             font: 20pt Trebuchet MS;
+                         }
+                         """
+    # msg = Message("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the " +
+    #               "industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and " +
+    #               "scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap " +
+    #               "into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the " +
+    #               "release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing " +
+    #               "software like Aldus PageMaker including versions of Lorem Ipsum.", "Message from the program")
     # msg = Message("Lorem Ipsum is simply dummy text of the printing and typesetting industry.", "Message")
     # msg = Message("Something went wrong. This could be because:\n- You are clumsy\n- The program isn't very good", "Error")
     # msg = Message('<html><head/><body><p>This is <span style="color:red;">red</span>!</p></body></html>', "Title")
-    # msg = Message(r'<html><head/><body><p>This is a picture: <img src="C:/Windows/System32/PerfCenterCpl.ico" height=25/></p></body></html>', "Title")
+    # msg = Message(r'<html><head/><body><p>This is a picture: <img src="C:/Windows/System32/PerfCenterCpl.ico" ' +
+                  # 'height=25/></p></body></html>', "Title")
     # msg = Message("Test message")
-    msg = Message('Normal\n[b]bold [i]italic [style size="50px"]huge [style color="red"]red[/style][/style][/i][/b]\n[url=C:/windows/notepad.exe][img]E:/Pictures/End button.png[/img][/url]', "Title", 5000)
+    msg = Message('Normal\n[b]bold [i]italic [style size="50px"]huge [style color="red"]red[/style][/style][/i][/b]\n' +
+                  '[url=C:/windows/notepad.exe][img]E:/Pictures/End button.png[/img][/url]', "Title", 5000)
     # message("Test")
     app.exec_()

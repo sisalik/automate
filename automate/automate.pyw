@@ -2,6 +2,7 @@ import time
 import json
 import os
 import sys
+import _winreg as reg
 
 from PyQt4 import QtCore, QtGui
 import win32gui
@@ -14,6 +15,7 @@ import message
 from tip_box import TipBox
 from single_instance import SingleInstance
 
+# Check if there is another instance of the program running
 app_instance = SingleInstance()
 if app_instance.alerady_running():
     app = QtGui.QApplication([])
@@ -125,8 +127,11 @@ class CommandWindow(QtGui.QWidget):
 
     def init_tray_icon(self):
         self.tray_menu = QtGui.QMenu(self)
-        quit_action = QtGui.QAction("&Quit", self, triggered=QtGui.qApp.quit)
+        startup_action = QtGui.QAction("&Run at startup", self, triggered=self.on_startup_toggle, checkable=True)
+        startup_action.setChecked(self.on_startup_toggle(test=True))
         about_action = QtGui.QAction("&About", self, triggered=self.on_about)
+        quit_action = QtGui.QAction("&Quit", self, triggered=QtGui.qApp.quit)
+        self.tray_menu.addAction(startup_action)
         self.tray_menu.addAction(about_action)
         self.tray_menu.addAction(quit_action)
 
@@ -312,9 +317,30 @@ class CommandWindow(QtGui.QWidget):
         self.on_change()
 
     def on_about(self):
-        QtGui.QMessageBox.about(self, "About automate 0.1.0", "automate is a Windows application launcher written in Python. " +
-            "Its main purpose is to make it quick and easy to launch anything -- from Start menu items " +
-            "to websites and scripts. It is easily extendable and customizable.")
+        text = """<p>automate is a Windows application launcher written in Python. Its main purpose is to make it quick and
+                  easy to launch anything -- from Start menu items to websites and scripts. It is easily extendable and
+                  customizable.</p>
+                  <p>Copyright &copy; 2014 Siim Lepik. Released under the MIT license.</p>
+                  <p><a href="https://github.com/sisalik/automate">Website</a></p>"""
+        QtGui.QMessageBox.about(self, "About automate 0.1.0", "<html><head/><body>%s</body></html>" % text)
+
+    def on_startup_toggle(self, checked=False, test=False):
+        # Retrieve a list of current user startup items from the registry
+        key = reg.OpenKey(reg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, reg.KEY_ALL_ACCESS)
+        paths = []
+        n_values = reg.QueryInfoKey(key)[1]
+        for i in xrange(n_values):
+            paths.append(reg.EnumValue(key, i)[1])
+        if test:
+            key.Close()
+            # Check if the program is already on the startup list. Used to initialise the 'checked' property of the menu item.
+            return __file__ in paths
+        else:
+            if not __file__ in paths and checked:
+                reg.SetValueEx(key, 'automate', 0, reg.REG_SZ, __file__)
+            elif __file__ in paths and not checked:
+                reg.DeleteValue(key, 'automate')
+            key.Close()
 
     def call(self, function, args=[]):
         """Call any function from the main GUI thread. This is sometimes needed because Qt doesn't allow GUI-related functions
