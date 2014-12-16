@@ -382,6 +382,7 @@ def caps_down():
 
 if __name__ == '__main__':
     t0 = time.time()
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))  # Set CWD to the app's directory
     app = QtGui.QApplication([])
     app.setQuitOnLastWindowClosed(False)
     cmd_win = CommandWindow()
