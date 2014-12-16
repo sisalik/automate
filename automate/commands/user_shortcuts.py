@@ -29,8 +29,8 @@ def create_shortcut(name=None):
     elif name == "":
         message("Press tab to enter a name for the shortcut first", "Error")
     else:
-        # Wait for the command window to fade out
-        CommandHandler.main_gui.after_hide = lambda name=name: get_shortcut(name)
+        # Call from the main thread because the function uses Qt objects
+        CommandHandler.main_gui.call(get_shortcut, [name])
 
 
 def get_shortcut(name):

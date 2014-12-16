@@ -149,6 +149,17 @@ class CommandWindow(QtGui.QWidget):
         frame_geom.moveCenter(center_point)
         self.move(frame_geom.topLeft())
 
+    @staticmethod
+    def activate_window(hwnd):
+        # Activate the window. This is non-trivial, since on Windows 7, applications are not allowed to steal focus by default.
+        # Solution based on a question by Joey Eremondi (jmite) on http://stackoverflow.com/q/6312627
+        fgwin = win32gui.GetForegroundWindow()
+        fg = win32process.GetWindowThreadProcessId(fgwin)[0]
+        current = win32api.GetCurrentThreadId()
+        win32process.AttachThreadInput(fg, current, True)
+        win32gui.SetForegroundWindow(hwnd)
+        win32process.AttachThreadInput(fg, win32api.GetCurrentThreadId(), False)
+
     def showEvent(self, event):
         event.accept()
         if time.time() - self.last_shown < 0.25:  # Double tapped caps lock
@@ -158,24 +169,12 @@ class CommandWindow(QtGui.QWidget):
         self.setWindowOpacity(self.default_alpha)
         self.show()
         self.center()
-        # Activate the window. This is non-trivial, since on Windows 7, applications are not allowed to steal focus by default.
-        # Solution based on a question by Joey Eremondi (jmite) on http://stackoverflow.com/q/6312627
-        fgwin = win32gui.GetForegroundWindow()
-        fg = win32process.GetWindowThreadProcessId(fgwin)[0]
-        current = win32api.GetCurrentThreadId()
-        win32process.AttachThreadInput(fg, current, True)
-        hwnd = int(self.winId())
-        win32gui.SetForegroundWindow(hwnd)
-        win32process.AttachThreadInput(fg, win32api.GetCurrentThreadId(), False)
+        self.prev_window = win32gui.GetForegroundWindow()
+        self.activate_window(int(self.winId()))
 
     def hideEvent(self, event):
         event.accept()
         self.on_fade_finished()
-        self.after_hide()
-        self.after_hide = lambda: None
-
-    def after_hide(self):
-        pass
 
     def slide(self, height):
         if self.default_size[1] + height < self.height():
@@ -188,6 +187,7 @@ class CommandWindow(QtGui.QWidget):
         animation.start()
 
     def fade(self):
+        win32gui.SetForegroundWindow(self.prev_window)
         self.fade_anim.setEndValue(0)
         self.fade_anim.start()
 
