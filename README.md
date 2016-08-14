@@ -34,6 +34,8 @@ File system navigation
 --------
 You can also use automate as a quick file explorer. When you start typing a directory name, such as `C:\`, automate will list the contents as autocomplete suggestions. Press Tab to trigger autocompletion and escape to move back to the parent directory.
 
+If a user shortcut points to a file or a folder, then pressing `TAB` will expand the path and you will be able to navigate from there.
+
 Customization
 ========
 Configuration is loaded from config/config.json. Colour schemes and other styles for the windows can be loaded from .css files, stored in the same directory.
