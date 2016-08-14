@@ -33,13 +33,13 @@ class CommandHandler(object):
 
     ac_delay = default_ac_delay
     ac_timer = QtCore.QTimer()
-    command_list = []
+    command_list = {}  # A dict containing dicts of data for all commands
     active_command = None
 
     @classmethod
     def load_commands(cls, ignore):
         """Import all .py files in a folder. Based on a solution by Anurag Uniyal at http://stackoverflow.com/a/1057534"""
-        modules = glob.glob(os.path.dirname(__file__)+"/commands/*.py")
+        modules = glob.glob(os.path.dirname(__file__) + "/commands/*.py")
         for f in modules:
             module_file = os.path.basename(f)[:-3]
             if module_file not in ignore:
@@ -56,16 +56,17 @@ class CommandHandler(object):
                 return f
             return register_decorator
         else:
-            command = dict(alias=alias, callback=callback, args=args, subcmds=subcmds)
-            cls.command_list.append(command)
+            command = dict(callback=callback, args=args, subcmds=subcmds)
+            cls.command_list[alias] = command
 
     @classmethod
     def remove(cls, alias):
-        for command in cls.command_list:
-            if command['alias'] == alias:
-                cls.command_list.remove(command)
-                return True  # Success
-        return False  # Couldn't find the command
+        try:
+            del cls.command_list[alias]
+        except KeyError:
+            return False
+        else:
+            return True
 
     @classmethod
     def run(cls, text):
@@ -78,17 +79,18 @@ class CommandHandler(object):
 
         if cls.active_command:
             print "Command:", cls.active_command, ">", text
-            for command in cls.command_list:
-                if command['alias'] == cls.active_command:
-                    thread.start_new_thread(command['callback'], (text,))
-                    cls.reset_mode()
-                    return True
+            thread.start_new_thread(cls.command_list[cls.active_command]['callback'], (text,))
+            cls.reset_mode()
+            return True
 
         print "Command:", text
-        for command in cls.command_list:
-            if command['alias'] == text:
-                thread.start_new_thread(command['callback'], tuple(command['args']))
-                return True
+        try:
+            command = cls.command_list[text]
+        except KeyError:
+            pass
+        else:
+            thread.start_new_thread(command['callback'], tuple(command['args']))
+            return True
 
         try:
             shell.Run('"' + text.decode("utf-8").encode("cp1252") + '"')
@@ -115,16 +117,12 @@ class CommandHandler(object):
         cmd_list = None
 
         if cls.active_command and "..." in cmd:
-            for command in cls.command_list:
-                if command['alias'] == cls.active_command:
-                    cmd_list = command['callback'](cmd)
-                    break
+            cmd_list = cls.command_list[cls.active_command]['callback'](cmd)
         else:
-            for command in cls.command_list:
-                if command['alias'] == cmd and command['subcmds']:
-                    cmd_list = command['callback']()
-                    cls.active_command = command['alias']
-                    break
+            command = cls.command_list[cmd]
+            if command['subcmds']:
+                cmd_list = command['callback']()
+                cls.active_command = cmd
 
         if type(cmd_list) is list:
             cls.autocomplete_function = cls.list_matcher(cmd_list)
@@ -133,6 +131,16 @@ class CommandHandler(object):
         else:
             return False
         return True
+
+    @classmethod
+    def get_cmd_path(cls, cmd):
+        try:
+            command = cls.command_list[cmd]
+        except KeyError:
+            return False
+        else:
+            if os.path.exists(command['args'][0]):
+                    return command['args'][0]
 
     @classmethod
     def on_ac_timeout(cls):
@@ -151,32 +159,33 @@ class CommandHandler(object):
     @classmethod
     def get_command_matches(cls, text):
         # Only trigger matching when text is not empty
-        if text:
-            matcher = autocomplete.Matcher()
-
-            if '\\' in text:
-                path = text[:text.rfind('\\')]
-                if os.path.isfile(path):
-                    return []
-                try:
-                    strings = [s.decode("cp1252").encode("utf-8") for s in os.listdir(path + '\\')]
-                except WindowsError:
-                    return []
-                else:
-                    matcher.set_pattern(text[text.rfind('\\') + 1:])
-            else:
-                matcher.set_pattern(text)
-                strings = []
-                for item in cls.command_list:
-                    alias = item['alias']
-                    if alias:
-                        strings.append(alias)
-
-            matches = matcher.score(strings)
-            matches.sort(key=lambda k: k['score'], reverse=True)
-            return [match['text'] for match in matches]
-        else:
+        if not text:
             return []
+
+        matcher = autocomplete.Matcher()
+
+        if '\\' in text:
+            path = text[:text.rfind('\\')]
+            if os.path.isfile(path):
+                return []
+            try:
+                strings = [s.decode("cp1252").encode("utf-8") for s in os.listdir(path + '\\')]
+            except WindowsError:
+                return []
+            else:
+                matcher.set_pattern(text[text.rfind('\\') + 1:])
+        else:
+            matcher.set_pattern(text)
+            strings = cls.command_list.keys()
+
+        matches = matcher.score(strings)
+        # Readjust scores
+        for match in matches:
+            if match['text'] == 'putty':
+                match['score'] = 9000
+
+        matches.sort(key=lambda k: k['score'], reverse=True)
+        return [match['text'] for match in matches]
 
     @classmethod
     def list_matcher(cls, list):
@@ -191,7 +200,7 @@ class CommandHandler(object):
 
     @classmethod
     def print_commands(cls):
-        return "\n".join([cmd['alias'] for cmd in cls.command_list]) + "\nTOTAL: " + str(len(cls.command_list))
+        return "\n".join([cmd for cmd in cls.command_list]) + "\nTOTAL: " + str(len(cls.command_list))
 
 shell = win32com.client.Dispatch("WScript.Shell")
 CommandHandler.autocomplete_function = CommandHandler.get_command_matches

@@ -195,21 +195,10 @@ class Hook(object):
         if wParam == win32con.WM_MOUSEMOVE:
             return windll.user32.CallNextHookEx(None, nCode, wParam, lParam)  # Call next hook
 
-        # Calculate mouse wheel delta value (120 or -120)
-        if lParam[2]:
-            delta = c_short(lParam[2] >> 16).value
-        else:
-            delta = None
-
-        # Fix coordinates at the edge of the screen not being integers
-        if type(lParam[0]) is not int:
-            x = 0
-        else:
-            x = lParam[0]
-        if type(lParam[1]) is not int:
-            y = 0
-        else:
-            y = lParam[1]
+        # Extract coodinate data on the event
+        x = c_short(lParam[0]).value if lParam[0] else 0
+        y = c_short(lParam[1]).value if lParam[1] else 0
+        delta = c_short(lParam[2] >> 16).value if lParam[2] else None  # Calculate mouse wheel delta value (120 or -120)
 
         # Construct event namedtuple
         event = MouseEvent(mouse_event_types[wParam], wParam, x, y, delta)

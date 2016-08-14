@@ -1,6 +1,7 @@
 import win32api
 
 from input_hook import Hook, send_combo
+# from message import message
 
 
 def adjust_volume(direction, amount=1):
@@ -13,10 +14,14 @@ def adjust_volume(direction, amount=1):
 
 @Hook.register("MOUSEWHEEL")
 def mouse_wheel(event):
-    screen_w = win32api.GetSystemMetrics(0)
-    if event.x == 0:
+    # GetSystemMetrics documentation: https://msdn.microsoft.com/en-gb/library/windows/desktop/ms724385(v=vs.85).aspx
+    screen_w = win32api.GetSystemMetrics(0)  # The width of the primary monitor
+    desktop_w = win32api.GetSystemMetrics(78)  # The width of the virtual desktop (all monitors)
+    desktop_left = win32api.GetSystemMetrics(76)  # The x-coordinate of the left side of the virtual screen
+    # message("x: %d" % event.x, "Debug")
+    if event.x == 0 or event.x == desktop_left or event.x == screen_w:
         amount = 3
-    elif event.x == screen_w - 1:
+    elif event.x == screen_w - 1 or event.x == desktop_w - 1 or event.x == -1:
         amount = 1
     elif event.y == 0:
         send_combo("LWIN + W")

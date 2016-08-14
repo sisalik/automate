@@ -9,7 +9,7 @@ from input_hook import send_combo
 
 def load_shortcuts():
     """Load the shortcuts dictionary from the JSON file."""
-    with open("config/shortcuts.json") as shortcuts_file:
+    with open("commands/shortcuts.json") as shortcuts_file:
         try:
             return json.load(shortcuts_file, "utf-8")  # Load existing shortcut dictionary
         except ValueError:  # No shortcuts saved in the file
@@ -18,7 +18,7 @@ def load_shortcuts():
 
 def save_shortcuts(dictionary):
     """Save a dictionary into the shortcuts JSON file."""
-    with open("config/shortcuts.json", "w") as shortcuts_file:
+    with open("commands/shortcuts.json", "w") as shortcuts_file:
         shortcuts_file.write(json.dumps(dictionary, sort_keys=True, indent=4, ensure_ascii=False).encode("utf-8"))
 
 
@@ -43,13 +43,13 @@ def get_shortcut(name):
         data = clipboard.mimeData().data(f)
         old_clipboard.setData(f, data)
 
-    # register_shortcut function to be called when a clipboard change has been detected
-    clipboard.dataChanged.connect(lambda n=name, old_cb=old_clipboard: register_shortcut(n, old_cb))
+    # register_selected_shortcut function to be called when a clipboard change has been detected
+    clipboard.dataChanged.connect(lambda n=name, old_cb=old_clipboard: register_selected_shortcut(n, old_cb))
     clipboard_timer.start()
     send_combo("LCONTROL + C")  # Send the ctrl+v key combination to copy active selection (file or text)
 
 
-def register_shortcut(name, old_clipboard):
+def register_selected_shortcut(name, old_clipboard):
     """Retrieve the text/filename from the clipboard and register it as a new command."""
     clipboard = QtGui.QApplication.clipboard()
     clipboard.dataChanged.disconnect()
@@ -74,10 +74,14 @@ def register_shortcut(name, old_clipboard):
     else:
         keyword = "updated"
         CommandHandler.remove(name)  # Delete the existing command
-    CommandHandler.register(name, CommandHandler.run, [shortcut.encode("utf-8")])  # Register the new command
+    register_shortcut(name, shortcut)  # Register the new command
     shortcuts_dict.update({name.decode("utf-8"): shortcut})  # Update with new shortcut
     save_shortcuts(shortcuts_dict)  # Write back to the file
     message("Shortcut %s: [i]%s[/i]\nTarget: [i]%s[/i]" % (keyword, name.decode("utf-8"), shortcut), "Success")
+
+
+def register_shortcut(name, path):
+    CommandHandler.register(name.encode("utf-8"), CommandHandler.run, [path.encode("utf-8")])
 
 
 def no_data_copied():
@@ -102,6 +106,15 @@ def remove_shortcut(name=None):
         else:
             message("Unable to remove shortcut: [i]%s[/i]" % name.decode("utf-8"), "Error")
 
+
+# On import, register all the shortcuts
+try:
+    shortcuts_dict = load_shortcuts()
+except ValueError:  # No shortcuts saved in the file
+    pass
+else:
+    for k, v in shortcuts_dict.items():
+        register_shortcut(k, v)
 
 clipboard_timer = QtCore.QTimer()
 clipboard_timer.timeout.connect(no_data_copied)

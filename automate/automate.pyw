@@ -54,16 +54,6 @@ class CommandWindow(QtGui.QWidget):
         with open("config/" + self.theme) as css_file:
             self.setStyleSheet(css_file.read())
 
-        # Load shortcuts
-        with open("config/shortcuts.json") as shortcuts_file:
-            try:
-                shortcuts_dict = json.load(shortcuts_file, "utf-8")
-            except ValueError:  # No shortcuts saved in the file
-                pass
-            else:
-                for k, v in shortcuts_dict.items():
-                    CommandHandler.register(k.encode("utf-8"), CommandHandler.run, [v.encode("utf-8")])
-
         # Set up a timer to watch the files for changes, restarting the script if detected
         # Solution idea from Petr Zemek (http://blog.petrzemek.net/2014/03/23/restarting-a-python-script-within-itself/)
         watched_files = [__file__, "config/config.json", "config/" + self.theme]
@@ -221,10 +211,12 @@ class CommandWindow(QtGui.QWidget):
     def run_command(self):
         command = self.get_command()
         if command:
+            self.fade()
             subcommand_mode = CommandHandler.active_command is not None
             if CommandHandler.run(command) and not subcommand_mode:
                 self.history.insert(0, command)
-            self.fade()
+            else:
+                self.hide()
         else:
             self.hide()
 
@@ -293,8 +285,15 @@ class CommandWindow(QtGui.QWidget):
 
     def on_tab(self):
         command = self.get_command()
+        command_path = CommandHandler.get_cmd_path(command)
         if '\\' in command:  # Folder navigation mode
             self.set_text(command + '\\')
+        elif self.tip_box.rows == 1 and command_path:  # Only expand the path if there are no other cmds
+            if os.path.isfile(command_path):
+                self.set_text(command_path)
+            else:
+                self.set_text(command_path + '\\')
+            self.on_change()
         elif CommandHandler.get_subcmds(command):
             self.help_text.setText(CommandHandler.active_command)
             self.clear()
@@ -336,7 +335,7 @@ class CommandWindow(QtGui.QWidget):
             # Check if the program is already on the startup list. Used to initialise the 'checked' property of the menu item.
             return __file__ in paths
         else:
-            if not __file__ in paths and checked:
+            if __file__ not in paths and checked:
                 reg.SetValueEx(key, 'automate', 0, reg.REG_SZ, __file__)
             elif __file__ in paths and not checked:
                 reg.DeleteValue(key, 'automate')
