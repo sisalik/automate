@@ -5,7 +5,7 @@ automate
 automate is a Windows application launcher written in Python. Its main purpose is to make it quick and easy to launch anything - from Start menu items to websites and scripts. It is easily extendable and customizable, including CSS theme support and Python plugins.
 
 <img src="http://i.imgur.com/l5rekZV.png" />
-<img src="http://i.imgur.com/DdWoMVr.png" />
+<img src="http://i.imgur.com/8Swox7y.png" />
 
 Dependencies
 ========
