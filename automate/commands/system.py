@@ -1,4 +1,5 @@
 from ctypes import cdll
+import subprocess
 
 import win32gui
 import win32con
@@ -16,6 +17,13 @@ def get_all_windows():
     titles = []
     win32gui.EnumWindows(enum_handler, titles)
     return titles
+
+
+def get_processes():
+    cmd = 'wmic process get Caption'  # ,Commandline,Processid
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    processes = [line.rstrip() for line in proc.stdout]
+    return processes[1:-1]
 
 
 def find_win(title):
@@ -48,6 +56,14 @@ def close(title=None):
     else:
         hwnd = find_win(title)
         win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+
+
+@CommandHandler.register("Kill...", subcmds=True, label='System', priority=0)
+def kill(process=None):
+    if process is None:  # Register command
+        return get_processes()
+    else:
+        subprocess.Popen('taskkill /f /im ' + process, shell=True)
 
 
 @CommandHandler.register("Screen off", label='System', priority=0)
