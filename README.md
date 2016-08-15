@@ -53,4 +53,4 @@ Any .py files in the `commands` folder will be automatically imported as command
 
 To illustrate: this is what a 'Hello World' command looks like:
 
-<img src="http://i.imgur.com/baoholN.png" />
+<img src="http://i.imgur.com/MtKdcrq.png" />
