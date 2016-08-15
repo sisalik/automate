@@ -10,13 +10,13 @@ Message, QLabel#title, QLabel#message {
 /*Command entry box*/
 QLineEdit#cmd_box {
     padding-left: 10px;
-    font: 40pt Lucida Sans Unicode;
+    font: 40pt Lucida Console;
 }
 
 /*Autocomplete suggest box labels*/
 QLabel#tip_line {
     padding-left: 5px;
-    font: 14pt Lucida Sans Unicode;
+    font: 14pt Lucida Console;
     color: #777;
     selection-color: black;
 }
@@ -31,7 +31,7 @@ QLabel#help_text {
     color: #aaa;
     background: transparent;
     padding-left: 5px;
-    font: 40pt Lucida Sans Unicode;
+    font: 40pt Lucida Console;
 }
 
 
@@ -43,12 +43,12 @@ Message, QLabel#title, QLabel#message {
 
 /*Message title label*/
 QLabel#title {
-    font: 40pt Lucida Sans Unicode;
+    font: 40pt Lucida Console;
     margin-bottom: 0px;
 }
 
 /*Message text label*/
 QLabel#message {
     color: #777;
-    font: 20pt Lucida Sans Unicode;
+    font: 20pt Lucida Console;
 }

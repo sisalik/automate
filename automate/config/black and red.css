@@ -3,7 +3,7 @@ CommandWindow, QLineEdit#cmd_box, QLabel#tip_line,
 Message, QLabel#title, QLabel#message {
     color: white;
     background: black;
-    selection-background-color: red;
+    selection-background-color: #ff392e;
     border: none;
 }
 
@@ -17,7 +17,7 @@ QLineEdit#cmd_box {
 QLabel#tip_line {
     padding-left: 5px;
     font: 14pt Trebuchet MS;
-    selection-color: red;
+    selection-color: #ff392e;
 }
 
 /*Selected/highlighted autocomplete suggestions*/
