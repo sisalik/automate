@@ -2,9 +2,10 @@
 
 automate
 ========
-automate is a Windows application launcher written in Python. Its main purpose is to make it quick and easy to launch anything - from Start menu items to websites and scripts. It is easily extendable and customizable.
+automate is a Windows application launcher written in Python. Its main purpose is to make it quick and easy to launch anything - from Start menu items to websites and scripts. It is easily extendable and customizable, including CSS theme support and Python plugins.
 
-<img src="http://i.imgur.com/rEl6ycP.png" />
+<img src="http://i.imgur.com/l5rekZV.png" />
+<img src="http://i.imgur.com/DdWoMVr.png" />
 
 Dependencies
 ========
@@ -32,7 +33,7 @@ More commands
 --------
 Some more built-in commands include: `Google...`, `Switch to...`, `Close...`, `Screen off`, `Sleep`, `Hibernate`. Some of these, such as `Switch to...` or `Google...` expect arguments (window title, search string etc.). Press the `TAB` key when these commands are selected to enter the command's submenu.
 
-When automate doesn't recognise a command, it will try to execute it using the same mechanism as the Run dialog in Windows. Try: `msconfig`, `regedit`, `www.google.com`.
+When automate doesn't recognise a command, it will try to execute it using the same mechanism as the Run dialog in Windows. Try: `msconfig`, `regedit`, `google.com`.
 
 File system navigation
 --------
