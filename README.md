@@ -29,6 +29,8 @@ Built-in Google search
 --------
 Double-pressing `CAPS LOCK` will allow you to perform a quick Google search.
 
+<img src="http://i.imgur.com/PaIpS1h.png" />
+
 More commands
 --------
 Some more built-in commands include: `Google...`, `Switch to...`, `Close...`, `Screen off`, `Sleep`, `Hibernate`. Some of these, such as `Switch to...` or `Google...` expect arguments (window title, search string etc.). Press the `TAB` key when these commands are selected to enter the command's submenu.
@@ -39,6 +41,8 @@ File system navigation
 --------
 You can also use automate as a quick file explorer. When you start typing a directory name, such as `C:\`, automate will list the contents as autocomplete suggestions. Press `TAB` to trigger autocompletion and `ESC` to move back to the parent directory.
 
+<img src="http://i.imgur.com/iRVBz5R.png" />
+
 If a user shortcut points to a file or a folder, then pressing `TAB` will expand the path and you will be able to navigate from there.
 
 Customization
@@ -46,3 +50,7 @@ Customization
 Configuration is loaded from config/config.json. Colour schemes and other styles for the windows can be loaded from .css files, stored in the same directory.
 
 Any .py files in the `commands` folder will be automatically imported as command files. You can register text commands or hotkeys in those files. Some examples have been provided.
+
+To illustrate: this is what a 'Hello World' command looks like:
+
+<img src="http://i.imgur.com/baoholN.png" />
