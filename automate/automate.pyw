@@ -117,12 +117,14 @@ class CommandWindow(QtGui.QWidget):
 
     def init_tray_icon(self):
         self.tray_menu = QtGui.QMenu(self)
-        startup_action = QtGui.QAction("&Run at startup", self, triggered=self.on_startup_toggle, checkable=True)
+        startup_action = QtGui.QAction("Run at &startup", self, triggered=self.on_startup_toggle, checkable=True)
         startup_action.setChecked(self.on_startup_toggle(test=True))
         about_action = QtGui.QAction("&About", self, triggered=self.on_about)
+        restart_action = QtGui.QAction("&Restart", self, triggered=restart)
         quit_action = QtGui.QAction("&Quit", self, triggered=QtGui.qApp.quit)
         self.tray_menu.addAction(startup_action)
         self.tray_menu.addAction(about_action)
+        self.tray_menu.addAction(restart_action)
         self.tray_menu.addAction(quit_action)
 
         self.tray_icon = QtGui.QSystemTrayIcon(self)
@@ -228,8 +230,8 @@ class CommandWindow(QtGui.QWidget):
             self.help_text.show()
         self.ac_thread = CommandHandler.get_matches(cmd_text)
         self.ac_thread.suggestions.connect(self.on_suggestions)
-        if CommandHandler.ac_delay > 0:  # If the delay is longer than 0 ms, clear the suggestions list before repopulating
-            self.ac_thread.suggestions.emit([])
+        # if CommandHandler.ac_delay > 0:  # If the delay is longer than 0 ms, clear the suggestions list before repopulating
+        #     self.ac_thread.suggestions.emit([])
 
     def on_suggestions(self, suggestions):
         pattern = self.get_text()
@@ -288,11 +290,11 @@ class CommandWindow(QtGui.QWidget):
         command_path = CommandHandler.get_cmd_path(command)
         if '\\' in command:  # Folder navigation mode
             self.set_text(command + '\\')
-        elif self.tip_box.rows == 1 and command_path:  # Only expand the path if there are no other cmds
-            if os.path.isfile(command_path):
-                self.set_text(command_path)
-            else:
+        elif command_path and self.tip_box.rows == 1:  # Only expand the path if there are no other cmds
+            if os.path.isdir(command_path) and command_path[-1] != '\\':  # Add a backslash if it's a folder (but not a drive)
                 self.set_text(command_path + '\\')
+            else:
+                self.set_text(command_path)
             self.on_change()
         elif CommandHandler.get_subcmds(command):
             self.help_text.setText(CommandHandler.active_command)
@@ -355,14 +357,14 @@ class CommandWindow(QtGui.QWidget):
         function(*args)
 
 
-@CommandHandler.register("Exit")
+@CommandHandler.register("Exit", label='automate', priority=0)
 def exit():
     cmd_win.tray_icon.hide()
     app.exit()
     Hook.stop()
 
 
-@CommandHandler.register("Reload")
+@CommandHandler.register("Reload", label='automate', priority=0)
 def restart():
     exit()
     python = sys.executable

@@ -27,6 +27,6 @@ cpanel_items = reg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion
 if __name__ != "__main__":
     from command_handler import CommandHandler
     for k, v in get_values(cpanel_items).items():
-        CommandHandler.register(v, subprocess.Popen, ["explorer shell:::" + k])
+        CommandHandler.register(v, subprocess.Popen, ["explorer shell:::" + k], label='Control Panel')
 else:
     print get_values(cpanel_items)

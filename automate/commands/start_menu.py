@@ -32,7 +32,7 @@ current_user = os.environ["APPDATA"] + r"\Microsoft\Windows\Start Menu"
 if __name__ != "__main__":
     from command_handler import CommandHandler
     for s in chain(get_shortcuts(all_users), get_shortcuts(current_user)):
-        CommandHandler.register(s['name'], subprocess.Popen, ["explorer " + s['target']])
+        CommandHandler.register(s['name'], subprocess.Popen, ["explorer " + s['target']], label='Start menu')
 else:
     for s in chain(get_shortcuts(all_users), get_shortcuts(current_user)):
         print s

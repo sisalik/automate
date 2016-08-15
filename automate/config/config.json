@@ -17,5 +17,5 @@
 
     // OTHER
     // Do not import these modules from the commands folder
-    "ignore_modules": ["example_commands", "key_remap"]
+    "ignore_modules": ["example", "key_remap"]
 }

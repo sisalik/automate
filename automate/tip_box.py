@@ -1,6 +1,7 @@
 import re
 
 from PyQt4 import QtCore, QtGui
+from message import message
 
 
 class TipBox(object):
@@ -30,8 +31,19 @@ class TipBox(object):
             line.mousePressEvent = lambda e, i=i: self.on_click(e, i)
             self.lines.append(line)
 
-    def highlight(self, text, pattern):
-        text = text.decode("utf-8")
+    def format(self, content, pattern):
+        if type(content) is dict:
+            text = content['text'].decode('utf-8')
+            label = content['label']
+        elif type(content) is str:
+            text = content.decode('utf-8')
+            label = ''
+
+        # Temporary - testing conditional formatting
+        # if text == 'putty':
+        #     text = '<i>putty</i>'
+
+        # Highlight the matched pattern
         pattern = pattern.decode("utf-8")
         start = 0
         for c in pattern.lower():
@@ -40,29 +52,28 @@ class TipBox(object):
                 highlighted = r'<span style="color:%s;">%s</span>' % (self.highlight_colour, text[pos])
                 start = pos + len(highlighted)
                 text = text[:pos] + highlighted + text[pos + 1:]
-        return "<html><head/><body><p>%s</p></body></html>" % text
-        # return r"""
-        #     <html>
-        #         <head/>
-        #         <body>
-        #             <table valign="middle">
-        #                 <tr>
-        #                     <td width=25><img src="C:\Windows\winsxs\amd64_microsoft-windows-dxp-deviceexperience_31bf3856ad364e35_6.1.7600.16385_none_a31a1d6b13784548\settings.ico" height="20"/></td>
-        #                     <td>%s</td>
-        #                 </tr>
-        #             </table>
-        #         </body>
-        #     </html>""" % text
+
+        colour = 'bgcolor="#333"' if label else ''  # Hide the label box if there is no label
+        # TODO: minimise the HTML needed here
+        return r"""<table valign="middle" width=690>
+                        <tr>
+                            <td>%s</td>
+                            <td align="right" style="font-size: 10pt; font-weight: 100; padding-right: 2px;">
+                                <table>
+                                    <tr>
+                                        <td %s style="padding-left: 5px; padding-right: 5px;">%s</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>""" % (text, colour, label)
 
     def set_text(self, content, pattern=None):
         content = list(content)  # In case it's a generator
         self.content = content
 
-        for line, text in zip(self.lines, content):
-            if pattern:
-                line.setText(self.highlight(text, pattern))
-            else:
-                line.setText(text.decode("utf-8"))
+        for line, item in zip(self.lines, content):
+            line.setText(self.format(item, pattern))
 
         self.selected = 0
         self.select(self.selected)
@@ -73,8 +84,8 @@ class TipBox(object):
     def get_selection(self):
         temp = QtGui.QTextDocument()
         temp.setHtml(self.lines[self.selected].text())
-        text = temp.toPlainText()  # No icons
-        # text = temp.toPlainText()[3:-1]
+        # text = temp.toPlainText()  # No icons
+        text = temp.toPlainText().split('\n')[1]
         return unicode(text).encode("utf-8")
 
     def select(self, index):

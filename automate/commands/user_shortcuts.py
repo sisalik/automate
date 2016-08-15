@@ -9,7 +9,7 @@ from input_hook import send_combo
 
 def load_shortcuts():
     """Load the shortcuts dictionary from the JSON file."""
-    with open("commands/shortcuts.json") as shortcuts_file:
+    with open("commands/user_shortcuts.json") as shortcuts_file:
         try:
             return json.load(shortcuts_file, "utf-8")  # Load existing shortcut dictionary
         except ValueError:  # No shortcuts saved in the file
@@ -18,19 +18,8 @@ def load_shortcuts():
 
 def save_shortcuts(dictionary):
     """Save a dictionary into the shortcuts JSON file."""
-    with open("commands/shortcuts.json", "w") as shortcuts_file:
+    with open("commands/user_shortcuts.json", "w") as shortcuts_file:
         shortcuts_file.write(json.dumps(dictionary, sort_keys=True, indent=4, ensure_ascii=False).encode("utf-8"))
-
-
-@CommandHandler.register("Create shortcut...", args=[""], subcmds=True)
-def create_shortcut(name=None):
-    if name is None:  # Register subcommands
-        return []
-    elif name == "":
-        message("Press tab to enter a name for the shortcut first", "Error")
-    else:
-        # Call from the main thread because the function uses Qt objects
-        CommandHandler.main_gui.call(get_shortcut, [name])
 
 
 def get_shortcut(name):
@@ -81,7 +70,7 @@ def register_selected_shortcut(name, old_clipboard):
 
 
 def register_shortcut(name, path):
-    CommandHandler.register(name.encode("utf-8"), CommandHandler.run, [path.encode("utf-8")])
+    CommandHandler.register(name.encode("utf-8"), CommandHandler.run, [path.encode("utf-8")], label='Shortcut', priority=1)
 
 
 def no_data_copied():
@@ -90,7 +79,18 @@ def no_data_copied():
     message("Unable to retrieve clipboard data. Select a file or some text and try again.", "Error")
 
 
-@CommandHandler.register("Remove shortcut...", args=[""], subcmds=True)
+@CommandHandler.register("Create shortcut...", args=[""], subcmds=True, label='Shortcuts', priority=0)
+def create_shortcut(name=None):
+    if name is None:  # Register subcommands
+        return []
+    elif name == "":
+        message("Press tab to enter a name for the shortcut first", "Error")
+    else:
+        # Call from the main thread because the function uses Qt objects
+        CommandHandler.main_gui.call(get_shortcut, [name])
+
+
+@CommandHandler.register("Remove shortcut...", args=[""], subcmds=True, label='Shortcuts', priority=0)
 def remove_shortcut(name=None):
     if name is None:  # Register subcommands
         shortcuts_dict = load_shortcuts()

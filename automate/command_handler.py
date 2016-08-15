@@ -4,6 +4,8 @@ import thread
 import os
 import glob
 import re
+import math
+import random
 
 import win32com.client
 from pywintypes import com_error
@@ -47,17 +49,31 @@ class CommandHandler(object):
                 __import__(module, locals(), globals())
 
     @classmethod
-    def register(cls, alias, callback=None, args=[], subcmds=False):
-        """Decorator for registering commands."""
+    def register(cls, alias, callback=None, args=[], subcmds=False, label='', label_colour='', priority=100):
+        """Function for registering commands. Can also be used as a decorator.
+
+        alias           Name of the command that will be typed in by the user
+        callback        Function to call when the command is executed
+        args            Arguments to pass to the callback function
+        subcmds         Flag determining whether the command has subcommands (accessed by the user by pressing Tab)
+        label           Command label displayed on the right hand side of the suggestions dropdown
+        label_colour    Colour of the above label
+        priority        Adjusts the position of the command in the suggestions dropdown. Lower numbers have higher priority."""
+
         # Called as a decorator?
         if callback is None:
             def register_decorator(f):
-                cls.register(alias, callback=f, args=args, subcmds=subcmds)
+                cls.register(alias, callback=f, args=args, subcmds=subcmds, label=label, label_colour=label_colour,
+                             priority=priority)
                 return f
             return register_decorator
         else:
-            command = dict(callback=callback, args=args, subcmds=subcmds)
-            cls.command_list[alias] = command
+            # Add label colour formatting. If not specified, assign a random (hashed) colour.
+            label_colour = label_colour if label_colour else get_random_colour(label)
+            if label:
+                label = '<span style="color:%s">%s</span>' % (label_colour, label)
+
+            cls.command_list[alias] = dict(callback=callback, args=args, subcmds=subcmds, label=label, priority=priority)
 
     @classmethod
     def remove(cls, alias):
@@ -116,6 +132,7 @@ class CommandHandler(object):
     def get_subcmds(cls, cmd):
         cmd_list = None
 
+        # message("Get subcmds: '%s'" % cmd)
         if cls.active_command and "..." in cmd:
             cmd_list = cls.command_list[cls.active_command]['callback'](cmd)
         else:
@@ -136,11 +153,15 @@ class CommandHandler(object):
     def get_cmd_path(cls, cmd):
         try:
             command = cls.command_list[cmd]
-        except KeyError:
+        except:
             return False
         else:
-            if os.path.exists(command['args'][0]):
-                    return command['args'][0]
+            if command['args'] == []:  # This command definitely does not point to a file
+                return False
+            if os.path.exists(command['args'][0]):  # This command points to a file
+                return command['args'][0]
+            else:
+                return False
 
     @classmethod
     def on_ac_timeout(cls):
@@ -163,8 +184,9 @@ class CommandHandler(object):
             return []
 
         matcher = autocomplete.Matcher()
+        folder_mode = '\\' in text
 
-        if '\\' in text:
+        if folder_mode:
             path = text[:text.rfind('\\')]
             if os.path.isfile(path):
                 return []
@@ -179,13 +201,27 @@ class CommandHandler(object):
             strings = cls.command_list.keys()
 
         matches = matcher.score(strings)
-        # Readjust scores
-        for match in matches:
-            if match['text'] == 'putty':
-                match['score'] = 9000
+        # Readjust scores, based on the priority declared in each command's registration
+        if not folder_mode:
+            for match in matches:
+                match['score'] -= 100 * cls.command_list[match['text']]['priority']
 
         matches.sort(key=lambda k: k['score'], reverse=True)
-        return [match['text'] for match in matches]
+        suggestions = []
+        for match in matches:
+            text = match['text']
+            if folder_mode:
+                item = path + '\\' + text
+                if os.path.isfile(item):
+                    label = '{:,.0f} kB'.format(math.ceil(os.path.getsize(item) / 1024.0))  # Divide by 1024 to get size in kB
+                elif os.path.isdir(item):
+                    label = ''  # TODO: think of what to put here
+                else:
+                    label = 'Unknown'
+            else:
+                label = cls.command_list[text]['label']
+            suggestions.append({'text': text, 'label': label})
+        return suggestions
 
     @classmethod
     def list_matcher(cls, list):
@@ -201,6 +237,13 @@ class CommandHandler(object):
     @classmethod
     def print_commands(cls):
         return "\n".join([cmd for cmd in cls.command_list]) + "\nTOTAL: " + str(len(cls.command_list))
+
+
+def get_random_colour(string):
+    """Generate a random light pastel colour, unique to a given string."""
+    random.seed(string)
+    r, g, b = map(lambda x: random.randrange(64, 255), range(3))
+    return "#%x%x%x" % (r, g, b)
 
 shell = win32com.client.Dispatch("WScript.Shell")
 CommandHandler.autocomplete_function = CommandHandler.get_command_matches

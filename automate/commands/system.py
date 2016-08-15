@@ -25,7 +25,7 @@ def find_win(title):
     return None
 
 
-@CommandHandler.register("Switch to...", subcmds=True)
+@CommandHandler.register("Switch to...", subcmds=True, label='System', priority=0)
 def switch_to(title=None):
     if title is None:  # Register command
         win_titles = [win['title'] for win in get_all_windows()]
@@ -40,7 +40,7 @@ def switch_to(title=None):
             win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
 
 
-@CommandHandler.register("Close...", subcmds=True)
+@CommandHandler.register("Close...", subcmds=True, label='System', priority=0)
 def close(title=None):
     if title is None:  # Register command
         win_titles = [win['title'] for win in get_all_windows()]
@@ -50,14 +50,14 @@ def close(title=None):
         win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
 
 
-@CommandHandler.register("Screen off")
+@CommandHandler.register("Screen off", label='System', priority=0)
 def screen_off():
     for win in get_all_windows():
         if win['title'] == "Program Manager":
             win32gui.SendMessage(win['hwnd'], win32con.WM_SYSCOMMAND, win32con.SC_MONITORPOWER, 2)
 
 
-@CommandHandler.register("Sleep")
+@CommandHandler.register("Sleep", label='System', priority=0)
 def sleep():
     # SetSuspendState only returns after the computer resumes, therefore causing errors. Enclosed in a try-except block.
     try:
@@ -66,7 +66,7 @@ def sleep():
         pass
 
 
-@CommandHandler.register("Hibernate")
+@CommandHandler.register("Hibernate", label='System', priority=0)
 def hibernate():
     try:
         cdll.LoadLibrary("powrprof.dll").SetSuspendState(1, 0, 0)
